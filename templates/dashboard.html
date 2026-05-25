@@ -36,7 +36,7 @@
 
 <div class="main">
     <div class="toolbar">
-        <h1>Tracking Dashboard</h1>
+        <h1>Tracking Dashboard <span id="rowCount" class="row-count-pill">—</span></h1>
 
         <div class="pill-group" role="radiogroup" aria-label="granularity">
             <input type="radio" name="gran" id="g-all" value="all" checked>
@@ -87,10 +87,6 @@
         </div>
 
         <div class="table-card">
-            <div class="table-header">
-                <h3>รายการงาน</h3>
-                <div class="count" id="rowCount">—</div>
-            </div>
             <div class="table-wrap">
                 <table id="jobsTable">
                     <thead>
