@@ -423,6 +423,19 @@ def debt_health_proxy():
     )
 
 
+@app.route("/api/debt/records", methods=["GET", "POST"])
+@app.route("/api/debt/records/<path:subpath>", methods=["GET", "POST", "DELETE"])
+@require_api_key
+def debt_records_proxy(subpath=""):
+    """Proxy /api/debt/records/* → debt-api internal."""
+    tail = f"/{subpath}" if subpath else ""
+    return _proxy_to(
+        os.getenv("DEBT_API_URL", "http://localhost:5600"),
+        os.getenv("DEBT_API_KEY", "").strip(),
+        f"/api/records{tail}",
+    )
+
+
 @app.route("/api/debt/upload", methods=["POST"])
 @require_api_key
 def debt_upload():
