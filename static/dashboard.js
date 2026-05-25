@@ -26,12 +26,28 @@ const state = {
 
 
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     bindUI();
     initDates();
     refreshAll();
     fetchStatus();
     setInterval(fetchStatus, 15000);
 });
+
+function initTheme() {
+    const btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    const apply = (t) => {
+        document.documentElement.setAttribute('data-theme', t);
+        btn.textContent = t === 'light' ? '☀️' : '🌙';
+        try { localStorage.setItem('se-theme', t); } catch (e) {}
+    };
+    apply(document.documentElement.getAttribute('data-theme') || 'dark');
+    btn.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+        apply(cur === 'dark' ? 'light' : 'dark');
+    });
+}
 
 function bindUI() {
     document.querySelectorAll('input[name=gran]').forEach(el => {

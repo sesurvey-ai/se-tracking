@@ -8,6 +8,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <script>
+        // Apply saved theme before render to avoid flash
+        (function () {
+            try {
+                var t = localStorage.getItem('se-theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { /* localStorage unavailable */ }
+        })();
+    </script>
     {% block head_extra %}{% endblock %}
 </head>
 <body>
