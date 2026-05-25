@@ -358,6 +358,71 @@ def api_sources_status():
     )
 
 
+# ── Proxy endpoints — single public entry point for emcs + debt APIs ──────
+# These let Hpw.py (and other external clients) talk to the internal-only
+# emcs-api / debt-api containers via the public tracking.sesurvey.cloud host.
+
+def _proxy_to(svc_url: str, svc_key: str, path: str):
+    """Generic proxy. Forwards method + body + selected headers to upstream."""
+    if not svc_url:
+        return jsonify({"error": "upstream not configured"}), 502
+    url = svc_url.rstrip("/") + path
+    upstream_headers = {}
+    if svc_key:
+        upstream_headers["X-API-Key"] = svc_key
+    # Pass through Content-Type for JSON / multipart bodies
+    if request.headers.get("Content-Type"):
+        upstream_headers["Content-Type"] = request.headers["Content-Type"]
+    try:
+        if request.method == "GET":
+            r = _requests.get(url, params=request.args.to_dict(flat=True),
+                              headers=upstream_headers, timeout=120)
+        else:
+            r = _requests.request(
+                request.method, url,
+                params=request.args.to_dict(flat=True),
+                headers=upstream_headers,
+                data=request.get_data(),
+                timeout=300,
+            )
+    except Exception as e:
+        log.exception("proxy %s %s failed", request.method, url)
+        return jsonify({"error": str(e)}), 502
+    return Response(r.content, status=r.status_code,
+                    mimetype=r.headers.get("Content-Type", "application/json"))
+
+
+@app.route("/api/emcs/<path:subpath>", methods=["GET", "POST", "DELETE"])
+@require_api_key
+def emcs_proxy(subpath):
+    """Proxy /api/emcs/* → emcs-api internal."""
+    return _proxy_to(
+        os.getenv("EMCS_API_URL", "http://localhost:5500"),
+        os.getenv("EMCS_API_KEY", "").strip(),
+        f"/api/{subpath}",
+    )
+
+
+@app.route("/api/emcs/healthz")
+@require_api_key
+def emcs_health_proxy():
+    return _proxy_to(
+        os.getenv("EMCS_API_URL", "http://localhost:5500"),
+        os.getenv("EMCS_API_KEY", "").strip(),
+        "/healthz",
+    )
+
+
+@app.route("/api/debt/healthz")
+@require_api_key
+def debt_health_proxy():
+    return _proxy_to(
+        os.getenv("DEBT_API_URL", "http://localhost:5600"),
+        os.getenv("DEBT_API_KEY", "").strip(),
+        "/healthz",
+    )
+
+
 @app.route("/api/debt/upload", methods=["POST"])
 @require_api_key
 def debt_upload():
