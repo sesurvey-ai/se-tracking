@@ -1,8 +1,6 @@
 {% extends "base.html" %}
 {% block title %}se-tracking — Dashboard{% endblock %}
-{% block head_extra %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-{% endblock %}
+{% block head_extra %}{% endblock %}
 
 {% block body %}
 <aside class="sidebar">
@@ -84,17 +82,6 @@
                 <h4>ตัดหนี้</h4>
                 <div class="count" data-stat="debt">—</div>
                 <div class="meta dropoff" data-dropoff="debt"></div>
-            </div>
-        </div>
-
-        <div class="chart-row">
-            <div class="chart-card">
-                <h3>📊 Funnel (Drop-off)</h3>
-                <div class="chart-canvas"><canvas id="funnelChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <h3>📈 รายวัน (60 วันล่าสุด)</h3>
-                <div class="chart-canvas"><canvas id="trendChart"></canvas></div>
             </div>
         </div>
 

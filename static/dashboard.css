@@ -180,31 +180,6 @@ button { font-family: inherit; }
 }
 .stat-card .meta.dropoff { color: #f59e0b; }
 
-/* ── Charts ──────────────────────────────────────────────────────── */
-.chart-row {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 16px;
-    margin-bottom: 24px;
-}
-.chart-card {
-    background: #1e293b;
-    border: 1px solid #334155;
-    border-radius: 10px;
-    padding: 18px 20px;
-}
-.chart-card h3 {
-    font-size: 13px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 12px;
-}
-.chart-card .chart-canvas {
-    position: relative;
-    height: 240px;
-}
-
 /* ── Table ───────────────────────────────────────────────────────── */
 .table-card {
     background: #1e293b;

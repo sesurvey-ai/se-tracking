@@ -24,8 +24,6 @@ const state = {
     sourceStatus: null,
 };
 
-let funnelChart = null;
-let trendChart = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     bindUI();
@@ -143,7 +141,6 @@ async function fetchStats() {
     if (!r.ok) { console.error('stats fetch failed'); return; }
     state.stats = await r.json();
     renderStats();
-    renderCharts();
 }
 
 async function fetchStatus() {
@@ -171,67 +168,6 @@ function renderStats() {
     document.querySelector('[data-dropoff=keyed]').textContent    = pct(s.keyed,    s.closed);
     document.querySelector('[data-dropoff=approved]').textContent = pct(s.approved, s.keyed);
     document.querySelector('[data-dropoff=debt]').textContent     = pct(s.debt,     s.approved);
-}
-
-function renderCharts() {
-    if (!state.stats) return;
-    renderFunnel();
-    renderTrend();
-}
-
-function renderFunnel() {
-    const s = state.stats.stages || {};
-    const labels = ['จบงาน', 'บันทึกงาน', 'อนุมัติ', 'ตัดหนี้'];
-    const data = [s.closed || 0, s.keyed || 0, s.approved || 0, s.debt || 0];
-    const ctx = document.getElementById('funnelChart').getContext('2d');
-    if (funnelChart) funnelChart.destroy();
-    funnelChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                data,
-                backgroundColor: ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444'],
-                borderRadius: 6,
-            }],
-        },
-        options: {
-            indexAxis: 'y',
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-                y: { ticks: { color: '#cbd5e1' }, grid: { display: false } },
-            },
-        },
-    });
-}
-
-function renderTrend() {
-    const ts = state.stats.timeseries || [];
-    const labels = ts.map(p => p.d);
-    const ctx = document.getElementById('trendChart').getContext('2d');
-    if (trendChart) trendChart.destroy();
-    trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'จบงาน',   data: ts.map(p => p.closed),   borderColor: '#3b82f6', backgroundColor: '#3b82f640', tension: 0.3 },
-                { label: 'บันทึกงาน', data: ts.map(p => p.keyed),    borderColor: '#22c55e', backgroundColor: '#22c55e40', tension: 0.3 },
-                { label: 'อนุมัติ',  data: ts.map(p => p.approved), borderColor: '#f59e0b', backgroundColor: '#f59e0b40', tension: 0.3 },
-                { label: 'ตัดหนี้',  data: ts.map(p => p.debt),     borderColor: '#ef4444', backgroundColor: '#ef444440', tension: 0.3 },
-            ],
-        },
-        options: {
-            maintainAspectRatio: false,
-            plugins: { legend: { labels: { color: '#cbd5e1', font: { size: 11 } } } },
-            scales: {
-                x: { ticks: { color: '#94a3b8', maxRotation: 0, autoSkipPadding: 20 }, grid: { display: false } },
-                y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
-            },
-        },
-    });
 }
 
 function renderTable() {
