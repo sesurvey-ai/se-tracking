@@ -1,0 +1,9 @@
+flask
+flask-compress
+orjson
+requests
+openpyxl
+APScheduler
+python-dotenv
+gunicorn
+pytest

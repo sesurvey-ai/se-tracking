@@ -1,0 +1,23 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.env
+data/
+data/tracking.db
+data/tracking.db-*
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
+
+# Large local-only data — never commit
+isurvey/
+backups/
+*.xlsx
+*.db
+*.db-wal
+*.db-shm
+*.json

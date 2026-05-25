@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}งาน {{ claim }} — se-tracking{% endblock %}
+
+{% block body %}
+<div class="main" style="overflow-y:auto;">
+    <div class="detail-wrap">
+        <a href="/" class="back-link">← กลับหน้าหลัก</a>
+        <h1 id="title">เลขเคลม {{ claim }}</h1>
+        <div class="sub">เลขเซอร์เวย์: <span id="surveyTxt">{{ survey or '—' }}</span></div>
+
+        <div id="status-row" style="margin-bottom:20px;"></div>
+
+        <div id="stages"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CLAIM = {{ claim|tojson }};
+const SURVEY = {{ survey|tojson }};
+
+const STAGE_META = [
+    { key: 'closed',   label: 'จบงาน',    source: 'se-billing',     color: '#3b82f6' },
+    { key: 'keyed',    label: 'บันทึกงาน', source: 'se-key',         color: '#22c55e' },
+    { key: 'approved', label: 'อนุมัติ',   source: 'pw',             color: '#f59e0b' },
+    { key: 'debt',     label: 'ตัดหนี้',   source: 'วางบิลรับเช็ค', color: '#ef4444' },
+];
+
+document.addEventListener('DOMContentLoaded', loadDetail);
+
+async function loadDetail() {
+    const url = `/api/jobs/${encodeURIComponent(CLAIM)}/${encodeURIComponent(SURVEY)}`;
+    const r = await fetch(url);
+    if (!r.ok) {
+        document.getElementById('stages').innerHTML = '<p class="muted">โหลดไม่สำเร็จ</p>';
+        return;
+    }
+    const data = await r.json();
+    renderStatusRow(data.view);
+    renderStages(data);
+}
+
+function renderStatusRow(view) {
+    if (!view) return;
+    const idx = view.status_index || 0;
+    const status = view.current_status || '—';
+    const skipped = view.skipped_stages ? JSON.parse(view.skipped_stages) : [];
+    const skippedHtml = skipped.length
+        ? `<div style="margin-top:8px; font-size:12px; color:#facc15;">⚠ ข้ามขั้น: ${skipped.join(', ')}</div>`
+        : '';
+    document.getElementById('status-row').innerHTML = `
+        <span class="status-badge s${idx}" style="font-size:14px; padding:6px 14px;">${esc(status)}</span>
+        ${skippedHtml}
+    `;
+}
+
+function renderStages(data) {
+    const container = document.getElementById('stages');
+    container.innerHTML = STAGE_META.map(m => {
+        const rows = data[m.key] || [];
+        const present = rows.length > 0;
+        let body = present ? renderRows(m.key, rows) : '<p class="muted">— ยังไม่มีข้อมูล —</p>';
+        return `
+            <div class="stage-card">
+                <div class="stage-header ${present ? '' : 'empty'}">
+                    <span class="icon" style="background:${m.color}; width:24px; height:24px; border-radius:50%;
+                                              display:inline-flex; align-items:center; justify-content:center;
+                                              color:#fff; font-weight:700; font-size:13px;">${present ? '✓' : '—'}</span>
+                    <h3>${esc(m.label)}</h3>
+                    <div class="meta">source: ${esc(m.source)} · ${rows.length} record(s)</div>
+                </div>
+                <div class="stage-body">${body}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+const FIELD_LABELS = {
+    created_at: 'วันที่บันทึก',
+    keyer: 'ผู้คีย์',
+    work_type: 'ประเภทงาน',
+    invoice_mix: 'invoice_mix',
+    isurvey_sent: 'ส่ง iSurvey แล้ว',
+    retry_count: 'จำนวน retry',
+    ts: 'วันที่จบงาน',
+    province_name: 'จังหวัด',
+    amphur_name: 'อำเภอ',
+    surveyor_name: 'ผู้สำรวจ',
+    inspector_name: 'ผู้ตรวจ',
+    oss_company: 'บริษัท OSS',
+    sur_invest: 'ค่าบริการ surveyor',
+    ins_invest: 'ค่าบริการ inspector',
+    ins_trans: 'ค่าเดินทาง',
+    ins_photo: 'ค่ารูป',
+    deduct_amt: 'หัก',
+    date_approve: 'วันอนุมัติ',
+    approve_amount: 'ยอดอนุมัติ',
+    offer_amount: 'ยอดเสนอ',
+    deduct_amount: 'ยอดถูกหัก',
+    claim_type: 'ประเภทเคลม',
+    cut_date_be: 'วันตัดหนี้',
+    amount: 'ยอด',
+    invoice_display: 'เลขใบแจ้งหนี้',
+    source_file: 'ไฟล์',
+    sheet: 'sheet',
+    synced_at: 'sync ครั้งล่าสุด',
+};
+
+function renderRows(stageKey, rows) {
+    return rows.map(r => {
+        const skip = new Set(['claim_canonical','survey_canonical','source_id','claim_display','survey_display','invoice_canonical']);
+        const items = Object.entries(r)
+            .filter(([k,v]) => !skip.has(k) && v != null && v !== '')
+            .map(([k,v]) => {
+                const lbl = FIELD_LABELS[k] || k;
+                let val = v;
+                if (typeof v === 'number' && k.match(/amount|invest|trans|photo|deduct|amt/i)) {
+                    val = Number(v).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+                }
+                return `<div><div class="lbl">${esc(lbl)}</div><div class="val">${esc(String(val))}</div></div>`;
+            });
+        return `<div class="grid">${items.join('')}</div>`;
+    }).join('<hr style="border:none; border-top:1px solid #334155; margin:14px 0;">');
+}
+
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+}
+</script>
+{% endblock %}

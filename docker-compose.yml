@@ -1,0 +1,83 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────
+# se-tracking stack — 3 services for Dokploy (or stand-alone docker compose)
+#
+# Adjust the build paths if you put the 3 repos elsewhere. Each service can
+# also be deployed independently as a Dokploy "Application" pointing to its
+# own folder/repo — this compose file is mainly for local-prod parity tests.
+# ─────────────────────────────────────────────────────────────────────────
+
+services:
+  emcs-api:
+    build: ../emcs-api
+    container_name: emcs-api
+    restart: unless-stopped
+    environment:
+      PORT: "5500"
+      EMCS_API_KEY: "${EMCS_API_KEY}"
+      EMCS_DB_PATH: "/data/emcs.db"
+    volumes:
+      - emcs-data:/data
+    ports:
+      - "5500:5500"
+    networks: [se-net]
+
+  debt-api:
+    build: ../debt-api
+    container_name: debt-api
+    restart: unless-stopped
+    environment:
+      PORT: "5600"
+      DEBT_API_KEY: "${DEBT_API_KEY}"
+      DEBT_DB_PATH: "/data/debt.db"
+      MAX_UPLOAD_MB: "50"
+    volumes:
+      - debt-data:/data
+    ports:
+      - "5600:5600"
+    networks: [se-net]
+
+  se-tracking:
+    build: .
+    container_name: se-tracking
+    restart: unless-stopped
+    depends_on: [emcs-api, debt-api]
+    environment:
+      PORT: "5400"
+      TRACKING_API_KEY: "${TRACKING_API_KEY}"
+      TRACKING_DB_PATH: "/data/tracking.db"
+
+      # se-key/se-billing — point at existing Dokploy services
+      SE_KEY_URL: "${SE_KEY_URL}"
+      SE_KEY_API_KEY: "${SE_KEY_API_KEY}"
+      SE_BILLING_URL: "${SE_BILLING_URL}"
+      SE_BILLING_TOKEN: "${SE_BILLING_TOKEN}"
+
+      # pw + debt — internal docker network
+      EMCS_API_URL: "http://emcs-api:5500"
+      EMCS_API_KEY: "${EMCS_API_KEY}"
+      DEBT_API_URL: "http://debt-api:5600"
+      DEBT_API_KEY: "${DEBT_API_KEY}"
+
+      # iSurvey API
+      ISURVEY_API_USERNAME: "${ISURVEY_API_USERNAME}"
+      ISURVEY_API_PASSWORD: "${ISURVEY_API_PASSWORD}"
+      ISURVEY_INITIAL_FROM: "2023-01-01"
+      ISURVEY_API_INTERVAL_MIN: "60"
+
+      SYNC_INTERVAL_MIN: "5"
+    volumes:
+      - tracking-data:/data
+    ports:
+      - "5400:5400"
+    networks: [se-net]
+
+volumes:
+  emcs-data:
+  debt-data:
+  tracking-data:
+
+networks:
+  se-net:
+    driver: bridge

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}se-tracking — Dashboard{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block body %}
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <h2>se-tracking</h2>
+        <div class="version">v{{ version }}</div>
+    </div>
+
+    <div class="sidebar-section">
+        <h3>ค้นหา</h3>
+        <input type="text" id="searchInput" placeholder="ค้นหา เลขเคลม / เลขเซอร์เวย์ / ใบแจ้งหนี้">
+    </div>
+
+    <div class="sidebar-section">
+        <h3>สถานะปัจจุบัน</h3>
+        <label><input type="checkbox" class="status-filter" value="จบงาน"> จบงาน</label>
+        <label><input type="checkbox" class="status-filter" value="บันทึกงาน"> บันทึกงาน</label>
+        <label><input type="checkbox" class="status-filter" value="อนุมัติ"> อนุมัติ</label>
+        <label><input type="checkbox" class="status-filter" value="ตัดหนี้"> ตัดหนี้</label>
+    </div>
+
+    <div class="sidebar-section">
+        <h3>ใช้วันที่ตาม</h3>
+        <label><input type="radio" name="date_basis" value="first_seen" checked> เห็นครั้งแรก</label>
+        <label><input type="radio" name="date_basis" value="last_updated"> อัพเดทล่าสุด</label>
+    </div>
+
+    <div class="sidebar-section" style="flex:1;">
+        <h3>สถานะการ Sync</h3>
+        <div id="syncStatus" style="font-size:12px; line-height:1.7;"></div>
+    </div>
+</aside>
+
+<div class="main">
+    <div class="toolbar">
+        <h1>Tracking Dashboard</h1>
+
+        <div class="pill-group" role="radiogroup" aria-label="granularity">
+            <input type="radio" name="gran" id="g-all" value="all" checked>
+            <label for="g-all">ทั้งหมด</label>
+            <input type="radio" name="gran" id="g-day" value="day">
+            <label for="g-day">วัน</label>
+            <input type="radio" name="gran" id="g-month" value="month">
+            <label for="g-month">เดือน</label>
+            <input type="radio" name="gran" id="g-year" value="year">
+            <label for="g-year">ปี</label>
+        </div>
+
+        <div class="input-group">
+            <span class="toolbar-label">จาก</span>
+            <input type="date" id="fromDate">
+            <span class="toolbar-label">ถึง</span>
+            <input type="date" id="toDate">
+        </div>
+
+        <button class="btn" id="uploadBtn" title="อัพโหลดไฟล์ตัดหนี้">📤 Upload ตัดหนี้</button>
+        <button class="btn btn-primary" id="refreshBtn">🔄 Refresh</button>
+        <button class="btn btn-success" id="exportBtn">📥 Excel</button>
+    </div>
+
+    <div class="content">
+        <div class="stats-row">
+            <div class="stat-card k1">
+                <h4>จบงาน</h4>
+                <div class="count" data-stat="closed">—</div>
+                <div class="meta">se-billing</div>
+            </div>
+            <div class="stat-card k2">
+                <h4>บันทึกงาน</h4>
+                <div class="count" data-stat="keyed">—</div>
+                <div class="meta dropoff" data-dropoff="keyed"></div>
+            </div>
+            <div class="stat-card k3">
+                <h4>อนุมัติ</h4>
+                <div class="count" data-stat="approved">—</div>
+                <div class="meta dropoff" data-dropoff="approved"></div>
+            </div>
+            <div class="stat-card k4">
+                <h4>ตัดหนี้</h4>
+                <div class="count" data-stat="debt">—</div>
+                <div class="meta dropoff" data-dropoff="debt"></div>
+            </div>
+        </div>
+
+        <div class="chart-row">
+            <div class="chart-card">
+                <h3>📊 Funnel (Drop-off)</h3>
+                <div class="chart-canvas"><canvas id="funnelChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <h3>📈 รายวัน (60 วันล่าสุด)</h3>
+                <div class="chart-canvas"><canvas id="trendChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h3>รายการงาน</h3>
+                <div class="count" id="rowCount">—</div>
+            </div>
+            <div class="table-wrap">
+                <table id="jobsTable">
+                    <thead>
+                        <tr>
+                            <th data-sort="claim_canonical">เลขเคลม</th>
+                            <th data-sort="invoice_canonical">เลขเซอร์เวย์</th>
+                            <th data-sort="status_index">สถานะ</th>
+                            <th class="stage-cell">จบงาน</th>
+                            <th class="stage-cell">บันทึกงาน</th>
+                            <th class="stage-cell">อนุมัติ</th>
+                            <th class="stage-cell">ตัดหนี้</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobsTbody">
+                        <tr><td colspan="7" class="muted" style="text-align:center; padding:32px;">กำลังโหลด...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="sync-strip" id="syncStrip"></div>
+</div>
+
+<div class="progress-overlay" id="progress">
+    <h4 id="progressTitle">กำลัง Sync...</h4>
+    <div id="progressLog"></div>
+</div>
+
+<div class="modal-backdrop" id="uploadModal" style="display:none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>📤 อัพโหลดไฟล์ตัดหนี้</h3>
+            <button class="modal-close" id="uploadClose">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="dropzone" id="dropzone">
+                <p style="margin-bottom:8px;">ลากไฟล์ <strong>.xlsx</strong> มาวางที่นี่ หรือ</p>
+                <label class="btn btn-primary" for="fileInput" style="cursor:pointer;">เลือกไฟล์</label>
+                <input type="file" id="fileInput" accept=".xlsx" multiple style="display:none;">
+                <p class="muted" style="font-size:11px; margin-top:10px;">รองรับการอัพโหลดหลายไฟล์ — ขนาดต่อไฟล์ไม่เกิน 50 MB</p>
+            </div>
+
+            <div id="uploadResults" style="margin-top:16px;"></div>
+
+            <h4 style="margin-top:20px; font-size:13px; color:#94a3b8; text-transform:uppercase;">ประวัติการอัพโหลด</h4>
+            <div class="upload-history" id="uploadHistory">กำลังโหลด...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='upload.js') }}"></script>
+{% endblock %}
