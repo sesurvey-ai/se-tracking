@@ -10,7 +10,7 @@ version: "3.8"
 
 services:
   emcs-api:
-    build: ../emcs-api
+    build: ./emcs-api
     container_name: emcs-api
     restart: unless-stopped
     environment:
@@ -24,7 +24,7 @@ services:
     networks: [se-net]
 
   debt-api:
-    build: ../debt-api
+    build: ./debt-api
     container_name: debt-api
     restart: unless-stopped
     environment:
