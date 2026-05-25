@@ -1,0 +1,6 @@
+flask
+flask-compress
+orjson
+openpyxl
+python-dotenv
+gunicorn
