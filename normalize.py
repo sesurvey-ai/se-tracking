@@ -88,6 +88,20 @@ def canonical_invoice(raw) -> str | None:
     return s or None
 
 
+_INVOICE_PREFIX_RE = re.compile(r"^[A-Z]+-")
+
+
+def strip_invoice_prefix(canon: str) -> str:
+    """Drop the series prefix from a canonical invoice — ตัดหนี้ files omit it.
+
+    Examples:
+        "SEABI-120260800591" -> "120260800591"
+        "SESV-67100066"      -> "67100066"
+        "120260800591"       -> "120260800591"
+    """
+    return _INVOICE_PREFIX_RE.sub("", canon or "")
+
+
 def parse_thai_be_date(s) -> date | None:
     """Parse Thai Buddhist-era date strings to a Gregorian `date`.
 

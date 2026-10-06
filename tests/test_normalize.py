@@ -11,6 +11,7 @@ from normalize import (
     canonical_claim,
     canonical_survey,
     canonical_invoice,
+    strip_invoice_prefix,
     parse_thai_be_date,
     to_iso_date,
     thai_be_label,
@@ -60,6 +61,17 @@ def test_canonical_survey(raw, expected):
 ])
 def test_canonical_invoice(raw, expected):
     assert canonical_invoice(raw) == expected
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("SEABI-120260800591", "120260800591"),
+    ("SESV-67100066", "67100066"),
+    ("120260800591", "120260800591"),    # ตัดหนี้ format — already bare
+    ("", ""),
+    (None, ""),
+])
+def test_strip_invoice_prefix(raw, expected):
+    assert strip_invoice_prefix(raw) == expected
 
 
 # -- parse_thai_be_date --------------------------------------------------------

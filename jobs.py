@@ -174,19 +174,15 @@ def _build_row(conn, claim, invoice, rebuilt_at):
         if not stages[k]
     ]
 
-    # Display: prefer raw from highest-stage source for claim/invoice;
+    # Display: prefer raw from highest-stage source for claim/invoice — except
+    # ตัดหนี้'s invoice, which lacks the SEABI-/SESV- prefix (last resort only).
     # survey_display only comes from pw (stage_approved).
     sources = [r for r in (debt_row, approved_row, closed_row, keyed_row) if r]
-    claim_display = None
-    invoice_display = None
-    for r in sources:
-        keys = r.keys()
-        if not claim_display and "claim_display" in keys:
-            claim_display = r["claim_display"]
-        if not invoice_display and "invoice_display" in keys:
-            invoice_display = r["invoice_display"]
-        if claim_display and invoice_display:
-            break
+    invoice_sources = [r for r in (approved_row, closed_row, keyed_row, debt_row) if r]
+    claim_display = next((r["claim_display"] for r in sources if r["claim_display"]), None)
+    invoice_display = next(
+        (r["invoice_display"] for r in invoice_sources if r["invoice_display"]), None
+    )
     if not claim_display:
         claim_display = claim
     if not invoice_display:
