@@ -32,7 +32,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("debt-api")
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 API_KEY = os.getenv("DEBT_API_KEY", "").strip()
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
 
@@ -219,10 +219,14 @@ def upload_xlsx():
     try:
         records, parser_skipped = xparser.parse_excel(blob, filename=file.filename)
         skipped += parser_skipped
-        a, u, s = _insert_records(records)
-        added += a
-        updated += u
-        skipped += s
+        if not records:
+            # Otherwise an unreadable layout "succeeds" with 0 rows and looks uploaded.
+            error_msg = "ไม่พบแถวตัดหนี้ในไฟล์ — ต้องมีคอลัมน์ CLAIM NO. / เลขที่ใบแจ้งหนี้ / AMT."
+        else:
+            a, u, s = _insert_records(records)
+            added += a
+            updated += u
+            skipped += s
     except Exception as e:
         error_msg = str(e)
         log.exception("upload parse/insert failed for %s", file.filename)

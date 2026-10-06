@@ -1,10 +1,13 @@
 """Parse uploaded Excel files into debt_records rows.
 
-Same column layout as the legacy `extract_ตัดหนี้.py`:
+Columns are located from each sheet's header row ("CLAIM NO." /
+"เลขที่ใบแจ้งหนี้" / "AMT.") — some rounds omit the PAYMENT # column, which
+shifts everything one column left. Sheets without that header fall back to
+the legacy `extract_ตัดหนี้.py` layout:
     Column C (index 2) = CLAIM NO.
     Column D (index 3) = เลขที่ใบแจ้งหนี้
     Column F (index 5) = AMT.
-Header row search: scan first 5 rows for "เช็ค DD/M/YYYY".
+Cut date: scan first 5 rows for "เช็ค DD/M/YYYY".
 """
 from __future__ import annotations
 
@@ -16,6 +19,18 @@ import openpyxl
 
 CLAIM_PATTERN = re.compile(r"^\d{4}/[0-9A-Za-z]+$")
 DATE_PATTERN = re.compile(r"(\d{1,2}/\d{1,2}/\d{4})")
+
+_LEGACY_COLS = (2, 3, 5)   # claim, invoice, amount
+_HEADER_SCAN_ROWS = 10
+
+
+def _find_columns(rows) -> tuple[int, int, int]:
+    """(claim, invoice, amount) indexes from the header row, else legacy layout."""
+    for row in rows[:_HEADER_SCAN_ROWS]:
+        keys = [re.sub(r"[\s.]", "", str(c)).upper() if c is not None else "" for c in row]
+        if "CLAIMNO" in keys and "เลขที่ใบแจ้งหนี้" in keys and "AMT" in keys:
+            return keys.index("CLAIMNO"), keys.index("เลขที่ใบแจ้งหนี้"), keys.index("AMT")
+    return _LEGACY_COLS
 
 
 def _clean_claim(v):
@@ -77,12 +92,14 @@ def parse_excel(source: bytes | IO[bytes], filename: str | None = None) -> tuple
             if cut_date:
                 break
 
+        claim_i, invoice_i, amount_i = _find_columns(all_rows)
+        width = max(claim_i, invoice_i, amount_i) + 1
         for row in all_rows:
-            if len(row) < 6:
+            if len(row) < width:
                 continue
-            claim = _clean_claim(row[2])
-            invoice = _clean_invoice(row[3])
-            amount = _clean_amount(row[5])
+            claim = _clean_claim(row[claim_i])
+            invoice = _clean_invoice(row[invoice_i])
+            amount = _clean_amount(row[amount_i])
             if not claim or not invoice:
                 skipped += 1
                 continue
